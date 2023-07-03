@@ -8,7 +8,7 @@ public class BoardInput : MonoBehaviour, IPointerDownHandler, IPointerUpHandler,
     private bool _isPressed;
     private bool _hasSwiped;
 
-    private Vector2Int _pressStartBoardPosition;
+    private HexVector _pressStartBoardPosition;
 
     private Board _board;
 
@@ -61,7 +61,7 @@ public class BoardInput : MonoBehaviour, IPointerDownHandler, IPointerUpHandler,
         var currentBoardPosition = cellBackground.BoardPosition;
         if(currentBoardPosition != _pressStartBoardPosition)
         {
-            var distance = Vector2Int.Distance(_pressStartBoardPosition, currentBoardPosition);
+            var distance = (_pressStartBoardPosition - currentBoardPosition).Length;
             if (distance > 1.0f)
                 return;
 
@@ -71,13 +71,13 @@ public class BoardInput : MonoBehaviour, IPointerDownHandler, IPointerUpHandler,
     }
 
 
-    private void OnClick(Vector2Int boardPosition)
+    private void OnClick(HexVector boardPosition)
     {
         Debug.Log($"OnClick(): {boardPosition}");
         _board.TrySpawnRandomCell(boardPosition);
     }
 
-    private void OnSwipe(Vector2Int boardPositionA, Vector2Int boardPositionB)
+    private void OnSwipe(HexVector boardPositionA, HexVector boardPositionB)
     {
         Debug.Log($"OnSwipe(): {boardPositionA} -> {boardPositionB}");
         _board.TrySwapCells(boardPositionA, boardPositionB);

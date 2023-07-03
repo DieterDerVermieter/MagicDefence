@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class BoardCell : MonoBehaviour
 {
-    public Vector2Int BoardPosition;
+    public HexVector BoardPosition;
 
     public int CellColor = 0;
 }

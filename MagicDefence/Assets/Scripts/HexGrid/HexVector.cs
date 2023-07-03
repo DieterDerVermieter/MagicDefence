@@ -1,45 +1,33 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+[Serializable]
 public struct HexVector
 {
-    public readonly int x;
-    public readonly int y;
-
     public readonly int q;
     public readonly int r;
     public readonly int s;
 
 
-    public HexVector(int x, int y)
-    {
-        this.x = x;
-        this.y = y;
-
-        q = x;
-        r = y;
-        s = -q - r;
-    }
-
     private HexVector(int q, int r, int s)
     {
-        x = q;
-        y = r;
-
         this.q = q;
         this.r = r;
         this.s = s;
     }
 
+    public HexVector(int q, int r) : this(q, r, -q -r) { }
+
 
     public override bool Equals(object obj) => obj is HexVector other && Equals(other);
-    public bool Equals(HexVector other) => x == other.x && y == other.y;
+    public bool Equals(HexVector other) => q == other.q && r == other.r;
 
-    public override int GetHashCode() => (x, y).GetHashCode();
+    public override int GetHashCode() => (q, r).GetHashCode();
 
-    public override string ToString() => new Vector2Int(x, y).ToString();
+    public override string ToString() => new Vector2Int(q, r).ToString();
 
     public static bool operator ==(HexVector a, HexVector b) => a.Equals(b);
     public static bool operator !=(HexVector a, HexVector b) => !a.Equals(b);

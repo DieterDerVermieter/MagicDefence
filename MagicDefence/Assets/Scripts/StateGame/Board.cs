@@ -17,8 +17,8 @@ public class Board : MonoBehaviour
     [SerializeField] private TMP_Text _scoreText;
 
 
-    private Dictionary<Vector2Int, BoardCell> _cells = new Dictionary<Vector2Int, BoardCell>();
-    private Dictionary<Vector2Int, BoardCell> _cellsTmp = new Dictionary<Vector2Int, BoardCell>();
+    private Dictionary<HexVector, BoardCell> _cells = new Dictionary<HexVector, BoardCell>();
+    private Dictionary<HexVector, BoardCell> _cellsTmp = new Dictionary<HexVector, BoardCell>();
 
     private bool _isTweenRunning;
     private Queue<Tween> _tweenQueue = new Queue<Tween>();
@@ -29,25 +29,62 @@ public class Board : MonoBehaviour
     private int _score;
 
 
+    public Vector2 HalfCellSize { get; private set; }
+
     public bool IsBusy => _isTweenRunning || _isSimulating;
 
 
+    private void Awake()
+    {
+        HalfCellSize = new Vector2(_cellRadius, _cellRadius * Mathf.Sqrt(3.0f) / 2.0f);
+    }
+
     private void Start()
     {
+        CreateBoard();
+        SimulateBoard();
+    }
+
+
+    private void CreateBoard()
+    {
+        var cellBackgrounds = new Dictionary<HexVector, BoardCellBackground>();
+
         for (int i = 0; i < _boardSize.x; i++)
         {
             for (int j = 0; j < _boardSize.y; j++)
             {
-                var boardPosition = new Vector2Int(i, j) - _boardSize / 2;
+                var boardPosition = new HexVector(i - _boardSize.x / 2, j - _boardSize.y / 2);
+                if (boardPosition.Length == 0)
+                    continue;
+
                 _cells.Add(boardPosition, null);
                 _cellsTmp.Add(boardPosition, null);
 
                 var cellBackground = Instantiate(_cellBackgroundPrefab, BoardToWorldPosition(boardPosition), Quaternion.identity, transform);
                 cellBackground.BoardPosition = boardPosition;
+
+                cellBackgrounds.Add(boardPosition, cellBackground);
             }
         }
 
-        SimulateBoard();
+        for (int i = 0; i < _boardSize.x; i++)
+        {
+            for (int j = 0; j < _boardSize.y; j++)
+            {
+                var boardPosition = new HexVector(i - _boardSize.x / 2, j - _boardSize.y / 2);
+                if (!cellBackgrounds.TryGetValue(boardPosition, out var cellBackground) || cellBackground == null)
+                    continue;
+
+                cellBackground.SetupNeighbours(
+                    _cells.ContainsKey(boardPosition + HexVector.Down),
+                    _cells.ContainsKey(boardPosition + HexVector.DownRight),
+                    _cells.ContainsKey(boardPosition + HexVector.DownLeft),
+                    _cells.ContainsKey(boardPosition + HexVector.Up),
+                    _cells.ContainsKey(boardPosition + HexVector.UpRight),
+                    _cells.ContainsKey(boardPosition + HexVector.UpLeft));
+            }
+        }
     }
 
 
@@ -81,30 +118,24 @@ public class Board : MonoBehaviour
     }
 
 
-    public Vector3 CellPosition(HexVector hexPosition)
+    public Vector3 BoardToWorldPosition(HexVector boardPosition)
     {
         var worldPosition = Vector3.zero;
 
-        // worldPosition += hexPosition.x * new Vector3(HalfCellSize.x * 1.5f, -HalfCellSize.y, 0.0f);
-        // worldPosition += hexPosition.y * new Vector3(0.0f, -HalfCellSize.y * 2.0f, 0.0f);
+        worldPosition += boardPosition.q * new Vector3(HalfCellSize.x * 1.5f, -HalfCellSize.y, 0.0f);
+        worldPosition += boardPosition.r * new Vector3(0.0f, -HalfCellSize.y * 2.0f, 0.0f);
 
         return worldPosition;
     }
 
 
-    public Vector3 BoardToWorldPosition(Vector2Int boardPosition)
-    {
-        return new Vector3(boardPosition.x, boardPosition.y, 0.0f);
-    }
-
-
-    public bool TryGetCell(Vector2Int boardPosition, out BoardCell cell)
+    public bool TryGetCell(HexVector boardPosition, out BoardCell cell)
     {
         return _cells.TryGetValue(boardPosition, out cell);
     }
 
 
-    public bool TrySpawnRandomCell(Vector2Int boardPosition)
+    public bool TrySpawnRandomCell(HexVector boardPosition)
     {
         if (IsBusy)
             return false;
@@ -116,7 +147,7 @@ public class Board : MonoBehaviour
         return result;
     }
 
-    private bool TrySpawnRandomCell(Vector2Int boardPosition, Sequence sequence)
+    private bool TrySpawnRandomCell(HexVector boardPosition, Sequence sequence)
     {
         if (_testCellPrefabs.Count <= 0)
             return false;
@@ -126,7 +157,7 @@ public class Board : MonoBehaviour
     }
 
 
-    public bool TrySpawnCell(Vector2Int boardPosition, BoardCell cellPrefab)
+    public bool TrySpawnCell(HexVector boardPosition, BoardCell cellPrefab)
     {
         if (IsBusy)
             return false;
@@ -138,7 +169,7 @@ public class Board : MonoBehaviour
         return result;
     }
 
-    private bool TrySpawnCell(Vector2Int boardPosition, BoardCell cellPrefab, Sequence sequence)
+    private bool TrySpawnCell(HexVector boardPosition, BoardCell cellPrefab, Sequence sequence)
     {
         if (!_cells.TryGetValue(boardPosition, out var otherCell) || otherCell != null)
             return false;
@@ -167,7 +198,7 @@ public class Board : MonoBehaviour
         {
             for (int j = 0; j < _boardSize.y; j++)
             {
-                var boardPosition = new Vector2Int(i, j) - _boardSize / 2;
+                var boardPosition = new HexVector(i - _boardSize.x / 2, j - _boardSize.y / 2);
                 TryDestroyCell(boardPosition, sequence);
             }
         }
@@ -178,7 +209,7 @@ public class Board : MonoBehaviour
         return true;
     }
 
-    public bool TryDestroyCell(Vector2Int boardPosition)
+    public bool TryDestroyCell(HexVector boardPosition)
     {
         if (IsBusy)
             return false;
@@ -190,7 +221,7 @@ public class Board : MonoBehaviour
         return result;
     }
 
-    private bool TryDestroyCell(Vector2Int boardPosition, Sequence sequence)
+    private bool TryDestroyCell(HexVector boardPosition, Sequence sequence)
     {
         if (!_cells.TryGetValue(boardPosition, out var otherCell) || otherCell == null)
             return false;
@@ -207,7 +238,7 @@ public class Board : MonoBehaviour
     }
 
 
-    public bool TrySwapCells(Vector2Int boardPositionA, Vector2Int boardPositionB)
+    public bool TrySwapCells(HexVector boardPositionA, HexVector boardPositionB)
     {
         if (IsBusy)
             return false;
@@ -226,7 +257,7 @@ public class Board : MonoBehaviour
         return result;
     }
 
-    private bool TrySwapCells(Vector2Int boardPositionA, Vector2Int boardPositionB, Sequence sequence)
+    private bool TrySwapCells(HexVector boardPositionA, HexVector boardPositionB, Sequence sequence)
     {
         if (!_cells.TryGetValue(boardPositionA, out var cellA))
             return false;
@@ -234,13 +265,13 @@ public class Board : MonoBehaviour
         if (!_cells.TryGetValue(boardPositionB, out var cellB))
             return false;
 
-        if(cellA != null)
+        if (cellA != null)
         {
             cellA.BoardPosition = boardPositionB;
             sequence.Join(cellA.transform.DOMove(BoardToWorldPosition(boardPositionB), 0.2f).SetEase(Ease.OutQuad));
         }
 
-        if(cellB != null)
+        if (cellB != null)
         {
             cellB.BoardPosition = boardPositionA;
             sequence.Join(cellB.transform.DOMove(BoardToWorldPosition(boardPositionA), 0.2f).SetEase(Ease.OutQuad));
@@ -285,27 +316,27 @@ public class Board : MonoBehaviour
     {
         var hasChanged = false;
 
-        StepGravity(ref hasChanged, sequence);
-        StepRefill(ref hasChanged, sequence);
+        StepGravityAndRefill(ref hasChanged, sequence);
         StepCombination(ref hasChanged, sequence);
 
         return hasChanged;
     }
 
 
-    private void StepGravity(ref bool hasChanged, Sequence sequence)
+    private void StepGravityAndRefill(ref bool hasChanged, Sequence sequence)
     {
         if (hasChanged)
             return;
 
         var time = 0.0f;
-        do {
+        do
+        {
             hasChanged = false;
 
             var subSequence = DOTween.Sequence();
             for (int i = 0; i < _boardSize.x; i++)
             {
-                var currentPosition = new Vector2Int(i, _boardSize.y - 1) - _boardSize / 2;
+                var currentPosition = new HexVector(i - _boardSize.x / 2, _boardSize.y / 2 - _boardSize.y + 1);
                 if (!_cells.TryGetValue(currentPosition, out var current) || current != null)
                     continue;
 
@@ -321,29 +352,31 @@ public class Board : MonoBehaviour
             {
                 for (int j = 0; j < _boardSize.y; j++)
                 {
-                    var currentPosition = new Vector2Int(i, j) - _boardSize / 2;
+                    var currentPosition = new HexVector(i - _boardSize.x / 2, j - _boardSize.y / 2);
                     if (!_cells.TryGetValue(currentPosition, out var current) || current == null)
                         continue;
 
-                    if (TryFall(current, currentPosition + Vector2Int.down))
+                    if (TryFall(current, currentPosition + HexVector.Down))
                     {
                         hasChanged = true;
                         continue;
                     }
 
+#if true
                     var randomDirection = Random.value > 0.5f ? 1 : -1;
 
-                    if (TryFall(current, currentPosition + Vector2Int.down + Vector2Int.right * randomDirection))
+                    if (TryFall(current, currentPosition + HexVector.DownRight * randomDirection))
                     {
                         hasChanged = true;
                         continue;
                     }
 
-                    if (TryFall(current, currentPosition + Vector2Int.down + Vector2Int.left * randomDirection))
+                    if (TryFall(current, currentPosition + HexVector.DownLeft * randomDirection))
                     {
                         hasChanged = true;
                         continue;
                     }
+#endif
                 }
             }
 
@@ -351,7 +384,7 @@ public class Board : MonoBehaviour
         }
         while (hasChanged);
 
-        bool TryFall(BoardCell cell, Vector2Int position)
+        bool TryFall(BoardCell cell, HexVector position)
         {
             if (!_cells.TryGetValue(position, out var other) || other != null)
                 return false;
@@ -368,28 +401,6 @@ public class Board : MonoBehaviour
         }
     }
 
-    private void StepRefill(ref bool hasChanged, Sequence sequence)
-    {
-        if (hasChanged)
-            return;
-
-        var subSequence = DOTween.Sequence();
-
-        for (int i = 0; i < _boardSize.x; i++)
-        {
-            var currentPosition = new Vector2Int(i, _boardSize.y - 1) - _boardSize / 2;
-            if (!_cells.TryGetValue(currentPosition, out var current) || current != null)
-                continue;
-
-            if (!TrySpawnRandomCell(currentPosition, subSequence))
-                continue;
-
-            hasChanged = true;
-        }
-
-        sequence.Append(subSequence);
-    }
-
     private void StepCombination(ref bool hasChanged, Sequence sequence)
     {
         if (hasChanged)
@@ -399,7 +410,7 @@ public class Board : MonoBehaviour
         {
             for (int j = 0; j < _boardSize.y; j++)
             {
-                var currentPosition = new Vector2Int(i, j) - _boardSize / 2;
+                var currentPosition = new HexVector(i - _boardSize.x / 2, j - _boardSize.y / 2);
                 if (!_cells.ContainsKey(currentPosition) || !_cellsTmp.ContainsKey(currentPosition))
                     continue;
 
@@ -411,15 +422,21 @@ public class Board : MonoBehaviour
         {
             for (int j = 0; j < _boardSize.y; j++)
             {
-                var currentPosition = new Vector2Int(i, j) - _boardSize / 2;
+                var currentPosition = new HexVector(i - _boardSize.x / 2, j - _boardSize.y / 2);
 
-                if(CheckDirection(currentPosition, Vector2Int.up))
+                if (CheckDirection(currentPosition, HexVector.Up))
                 {
                     hasChanged = true;
                     continue;
                 }
 
-                if (CheckDirection(currentPosition, Vector2Int.right))
+                if (CheckDirection(currentPosition, HexVector.UpRight))
+                {
+                    hasChanged = true;
+                    continue;
+                }
+
+                if (CheckDirection(currentPosition, HexVector.UpLeft))
                 {
                     hasChanged = true;
                     continue;
@@ -429,7 +446,7 @@ public class Board : MonoBehaviour
 
         // sequence.Append(subSequence);
 
-        bool CheckDirection(Vector2Int currentPosition, Vector2Int direction)
+        bool CheckDirection(HexVector currentPosition, HexVector direction)
         {
             if (!_cellsTmp.TryGetValue(currentPosition, out var current) || current == null)
                 return false;
