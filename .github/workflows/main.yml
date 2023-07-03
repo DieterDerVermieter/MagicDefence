@@ -44,3 +44,5 @@ jobs:
         with:
           name: Build
           path: build
+
+          - uses: game-ci/unity-builder@v2
