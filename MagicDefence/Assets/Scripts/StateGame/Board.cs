@@ -362,7 +362,7 @@ public class Board : MonoBehaviour
                         continue;
                     }
 
-#if true
+#if false
                     var randomDirection = Random.value > 0.5f ? 1 : -1;
 
                     if (TryFall(current, currentPosition + HexVector.DownRight * randomDirection))
