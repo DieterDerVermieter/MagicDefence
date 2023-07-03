@@ -17,11 +17,6 @@ jobs:
           - StandaloneWindows64
           # - Android
     steps:
-      # Create folder
-      - name: Create artifact dir
-        run: |
-          mkdir -p artifacts
-
       # Checkout
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -37,16 +32,6 @@ jobs:
           restore-keys: |
             Library-${{ matrix.projectPath }}-
             Library-
-
-      # # Test
-      # - name: Run tests
-      #   uses: game-ci/unity-test-runner@v2
-      #   env:
-      #     UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-      #   with:
-      #     githubToken: ${{ secrets.GITHUB_TOKEN }}
-      #     projectPath: ${{ matrix.projectPath }}
-      #     unityVersion: ${{ matrix.unityVersion }}
 
       # Build
       - name: Build project
