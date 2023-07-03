@@ -4,8 +4,18 @@ on: [push, pull_request]
 
 jobs:
   build:
-    name: Build my project ✨
+    name: Build for ${{ matrix.targetPlatform }} on version ${{ matrix.unityVersion }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        projectPath:
+          - ./MagicDefence/
+        unityVersion:
+          - 2019.3.8f1
+        targetPlatform:
+          - StandaloneWindows64
+          - Android
     steps:
       # Checkout
       - name: Checkout repository
@@ -14,7 +24,8 @@ jobs:
           lfs: true
 
       # Cache
-      - uses: actions/cache@v2
+      - name: Cache build
+        uses: actions/cache@v2
         with:
           path: MagicDefence/Library
           key: Library-${{ hashFiles('MagicDefence/Assets/**', 'MagicDefence/Packages/**', 'MagicDefence/ProjectSettings/**') }}
@@ -40,6 +51,7 @@ jobs:
           targetPlatform: WebGL
 
       # Output
+      - name: Output build
       - uses: actions/upload-artifact@v2
         with:
           name: Build
