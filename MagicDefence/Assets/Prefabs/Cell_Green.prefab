@@ -16,6 +16,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Cell_Green
       objectReference: {fileID: 0}
+    - target: {fileID: 2679265700808371822, guid: 9a18f97b93fa5ca44b4917ede04e9816, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5658337684318673134, guid: 9a18f97b93fa5ca44b4917ede04e9816, type: 3}
       propertyPath: m_Sprite
       value: 
