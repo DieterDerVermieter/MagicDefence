@@ -1,4 +1,4 @@
-name: Main Actions
+name: Release Build
 
 on:
   push:
