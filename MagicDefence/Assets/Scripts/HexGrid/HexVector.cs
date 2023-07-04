@@ -55,6 +55,9 @@ public struct HexVector
     public static HexVector DownLeft => new HexVector(-1, 1, 0);
 
 
+    public static HexVector Mirror(HexVector vector) => new HexVector(-vector.q, -vector.s, -vector.r);
+
+
     public static IEnumerable<HexVector> Ring(int radius)
     {
         if (radius < 0)
@@ -82,10 +85,10 @@ public struct HexVector
     }
 
 
-    public static IEnumerable<HexVector> Spiral(int radius)
+    public static IEnumerable<HexVector> Area(int radius)
     {
         var result = Enumerable.Empty<HexVector>();
-        for (int i = 0; i < radius; i++)
+        for (int i = 0; i <= radius; i++)
             result = result.Concat(Ring(i));
 
         return result;

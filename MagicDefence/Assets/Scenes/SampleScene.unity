@@ -181,7 +181,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 100.000
+  m_text: 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -288,14 +288,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b319f74674caf494f9a957afd60e66ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _boardSize: {x: 5, y: 5}
+  _boardRadius: 3
   _cellRadius: 0.5
   _cellBackgroundPrefab: {fileID: 3313768259586713107, guid: 1be8675a16643f44ea515259fd75e1cd, type: 3}
-  _testCellPrefabs:
+  _testStonePrefabs:
   - {fileID: 6633982688608520433, guid: 18a269a3c7e5e5c428b77804a610dc13, type: 3}
   - {fileID: 6633982688608520433, guid: 3bd00a6417ff6944d8d43d6ac6b89bf0, type: 3}
   - {fileID: 6633982688608520433, guid: bcc2aa9b48a77cb42a3f5fd7c78c1d66, type: 3}
   - {fileID: 6633982688608520433, guid: 586d39328e388c84590002afc7ef48f5, type: 3}
+  _testBlockerPrefabs:
+  - {fileID: 6633982688608520433, guid: 196125a2c8163cc46a12dda2eba6d4a8, type: 3}
+  - {fileID: 6633982688608520433, guid: 7193e15699c25f9428a766d8b1453b93, type: 3}
   _scoreText: {fileID: 244192869}
 --- !u!4 &250691423
 Transform:

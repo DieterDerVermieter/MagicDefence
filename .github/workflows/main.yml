@@ -1,10 +1,9 @@
-name: Actions 😎
+name: Main Actions
 
 on:
   push:
     branches:
       - 'master'
-      - 'build/**'
 
 jobs:
   build:
