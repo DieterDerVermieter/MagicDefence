@@ -17,16 +17,13 @@ jobs:
         unityVersion:
           - 2022.3.4f1
         targetPlatform:
-          - StandaloneWindows64
-          # - Android
+          - StandaloneWindows64 # Build a Windows 64-bit standalone.
+          - StandaloneLinux64 # Build a Linux 64-bit standalone.
     steps:
-      # Checkout
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
           lfs: true
-
-      # Cache
       - name: Cache build
         uses: actions/cache@v2
         with:
@@ -35,8 +32,6 @@ jobs:
           restore-keys: |
             Library-${{ matrix.projectPath }}-
             Library-
-
-      # Build
       - name: Build project
         uses: game-ci/unity-builder@v2
         env:
@@ -48,10 +43,36 @@ jobs:
           unityVersion: ${{ matrix.unityVersion }}
           targetPlatform: ${{ matrix.targetPlatform }}
           versioning: Semantic
-
-      # Output
-      - name: Output build
-        uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v2
         with:
-          name: Build
-          path: build
+          name: Build-${{ matrix.targetPlatform }}
+          path: build/${{ matrix.targetPlatform }}
+
+  deployToSteam:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Download StandaloneWindows64 Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: Build-StandaloneWindows64
+          path: build/StandaloneWindows64
+      - name: Download StandaloneLinux64 Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: Build-StandaloneLinux64
+          path: build/StandaloneLinux64
+      - uses: game-ci/steam-deploy@v3
+        with:
+          username: ${{ secrets.STEAM_USERNAME }}
+          configVdf: ${{ secrets.STEAM_CONFIG_VDF}}
+          appId: ${{ secrets.STEAM_APP_ID }}
+          buildDescription: v${{ needs.build.outputs.buildVersion }}
+          rootPath: build
+          depot1Path: StandaloneWindows64
+          depot2Path: StandaloneLinux64
+          releaseBranch: prerelease
