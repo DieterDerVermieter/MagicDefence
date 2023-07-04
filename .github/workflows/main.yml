@@ -1,9 +1,6 @@
-name: Release Build
+name: Build
 
-on:
-  push:
-    branches:
-      - 'prerelease'
+on: [push]
 
 jobs:
   build:
