@@ -1,0 +1,9 @@
+using UnityEngine;
+
+namespace Kott.MagicDefence
+{
+    public class #SCRIPTNAME# : MonoBehaviour
+    {
+        #NOTRIM#
+    }
+}
