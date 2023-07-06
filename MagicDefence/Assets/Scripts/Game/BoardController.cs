@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using DG.Tweening;
 using TMPro;
 using Kott.MagicDefence.Hex;
+using Kott.MagicDefence.Level;
+using Kott.MagicDefence.LevelEditor;
 
 namespace Kott.MagicDefence.Game
 {
-    public class Board : MonoBehaviour
+    public class BoardController : MonoBehaviour
     {
         [SerializeField] private int _boardRadius = 2;
 
@@ -20,11 +22,10 @@ namespace Kott.MagicDefence.Game
         [SerializeField] private TMP_Text _scoreText;
 
 
+        private Board<BoardCell, BoardCell> _board;
+
         private IEnumerable<HexVector> _cellPositions;
         private IEnumerable<HexVector> _cellTopPositions;
-
-        private Dictionary<HexVector, BoardCell> _cells = new Dictionary<HexVector, BoardCell>();
-        private Dictionary<HexVector, BoardCell> _cellsTmp = new Dictionary<HexVector, BoardCell>();
 
         private bool _isTweenRunning;
         private Queue<Tween> _tweenQueue = new Queue<Tween>();
@@ -54,6 +55,8 @@ namespace Kott.MagicDefence.Game
 
         private void CreateBoard()
         {
+            _board = new Board<BoardCell, BoardCell>();
+
             _cellPositions = HexVector.Area(_boardRadius).Where(position => position.Length > _boardRadius - 2).ToList();
             _cellTopPositions = _cellPositions.Where(position => position.r == -_boardRadius || position.s == _boardRadius).ToList();
 
@@ -61,8 +64,7 @@ namespace Kott.MagicDefence.Game
 
             foreach (var boardPosition in _cellPositions)
             {
-                _cells.Add(boardPosition, null);
-                _cellsTmp.Add(boardPosition, null);
+                _board.AddCell(boardPosition);
 
                 var cellBackground = Instantiate(_cellBackgroundPrefab, BoardToWorldPosition(boardPosition), Quaternion.identity, transform);
                 cellBackground.BoardPosition = boardPosition;
@@ -76,12 +78,12 @@ namespace Kott.MagicDefence.Game
                     continue;
 
                 cellBackground.SetupNeighbours(
-                    _cells.ContainsKey(boardPosition + HexVector.Down),
-                    _cells.ContainsKey(boardPosition + HexVector.DownRight),
-                    _cells.ContainsKey(boardPosition + HexVector.DownLeft),
-                    _cells.ContainsKey(boardPosition + HexVector.Up),
-                    _cells.ContainsKey(boardPosition + HexVector.UpRight),
-                    _cells.ContainsKey(boardPosition + HexVector.UpLeft));
+                    _board.HasCell(boardPosition + HexVector.Down),
+                    _board.HasCell(boardPosition + HexVector.DownRight),
+                    _board.HasCell(boardPosition + HexVector.DownLeft),
+                    _board.HasCell(boardPosition + HexVector.Up),
+                    _board.HasCell(boardPosition + HexVector.UpRight),
+                    _board.HasCell(boardPosition + HexVector.UpLeft));
             }
 
             var seqeunce = DOTween.Sequence();
@@ -140,7 +142,7 @@ namespace Kott.MagicDefence.Game
 
         public bool TryGetCell(HexVector boardPosition, out BoardCell cell)
         {
-            return _cells.TryGetValue(boardPosition, out cell);
+            return _board.TryGetStone(boardPosition, out cell);
         }
 
 
@@ -180,12 +182,12 @@ namespace Kott.MagicDefence.Game
 
         private bool TrySpawnCell(HexVector boardPosition, BoardCell cellPrefab, Sequence sequence)
         {
-            if (!_cells.TryGetValue(boardPosition, out var otherCell) || otherCell != null)
+            if (!_board.TryGetStone(boardPosition, out var otherCell) || otherCell != null)
                 return false;
 
             var newCell = Instantiate(cellPrefab, BoardToWorldPosition(boardPosition), Quaternion.identity, transform);
             newCell.BoardPosition = boardPosition;
-            _cells[boardPosition] = newCell;
+            _board.TrySetStone(boardPosition, newCell);
 
             newCell.transform.localScale = Vector3.zero;
 
@@ -228,14 +230,14 @@ namespace Kott.MagicDefence.Game
 
         private bool TryDestroyCell(HexVector boardPosition, Sequence sequence)
         {
-            if (!_cells.TryGetValue(boardPosition, out var otherCell) || otherCell == null)
+            if (!_board.TryGetStone(boardPosition, out var otherCell) || otherCell == null)
                 return false;
 
             var tween = otherCell.transform.DOScale(0.0f, 0.2f).SetEase(Ease.InQuad);
             tween.onComplete += () => Destroy(otherCell.gameObject);
             sequence.Join(tween);
 
-            _cells[boardPosition] = null;
+            _board.TrySetStone(boardPosition, null);
 
             ChangeScore(100, sequence);
 
@@ -264,10 +266,10 @@ namespace Kott.MagicDefence.Game
 
         private bool TrySwapCells(HexVector boardPositionA, HexVector boardPositionB, Sequence sequence)
         {
-            if (!_cells.TryGetValue(boardPositionA, out var cellA) || cellA == null || !cellA.CanMove)
+            if (!_board.TryGetStone(boardPositionA, out var cellA) || cellA == null || !cellA.CanMove)
                 return false;
 
-            if (!_cells.TryGetValue(boardPositionB, out var cellB) || cellB == null || !cellB.CanMove)
+            if (!_board.TryGetStone(boardPositionB, out var cellB) || cellB == null || !cellB.CanMove)
                 return false;
 
             cellA.BoardPosition = boardPositionB;
@@ -276,8 +278,7 @@ namespace Kott.MagicDefence.Game
             cellB.BoardPosition = boardPositionA;
             sequence.Join(cellB.transform.DOMove(BoardToWorldPosition(boardPositionA), 0.2f).SetEase(Ease.OutQuad));
 
-            _cells[boardPositionA] = cellB;
-            _cells[boardPositionB] = cellA;
+            _board.TrySwapStones(boardPositionA, boardPositionB);
 
             return true;
         }
@@ -296,17 +297,17 @@ namespace Kott.MagicDefence.Game
         }
 
 
-        public bool SimulateBoard()
+        public bool SimulateBoard(int depth = 0)
         {
             _isSimulating = true;
             var sequence = DOTween.Sequence();
-            if (!StepBoard(sequence))
+            if (depth >= 10 || !StepBoard(sequence))
             {
                 _isSimulating = false;
                 return false;
             }
 
-            sequence.onComplete += () => SimulateBoard();
+            sequence.onComplete += () => SimulateBoard(depth + 1);
             EnqueueTween(sequence);
             return true;
         }
@@ -335,7 +336,7 @@ namespace Kott.MagicDefence.Game
                 var subSequence = DOTween.Sequence();
                 foreach (var boardPosition in _cellTopPositions)
                 {
-                    if (!_cells.TryGetValue(boardPosition, out var current) || current != null)
+                    if (!_board.TryGetStone(boardPosition, out var current) || current != null)
                         continue;
 
                     if (!TrySpawnRandomCell(boardPosition, subSequence))
@@ -348,7 +349,7 @@ namespace Kott.MagicDefence.Game
 
                 foreach (var boardPosition in _cellPositions)
                 {
-                    if (!_cells.TryGetValue(boardPosition, out var current) || current == null || !current.CanMove)
+                    if (!_board.TryGetStone(boardPosition, out var current) || current == null || !current.CanMove)
                         continue;
 
                     if (TryFall(current, boardPosition + HexVector.Down))
@@ -363,7 +364,7 @@ namespace Kott.MagicDefence.Game
 
                 foreach (var boardPosition in _cellPositions)
                 {
-                    if (!_cells.TryGetValue(boardPosition, out var current) || current == null || !current.CanMove)
+                    if (!_board.TryGetStone(boardPosition, out var current) || current == null || !current.CanMove)
                         continue;
 
                     var mirror = Random.value > 0.5f;
@@ -387,7 +388,7 @@ namespace Kott.MagicDefence.Game
 
             bool TryFall(BoardCell cell, HexVector position)
             {
-                if (!_cells.TryGetValue(position, out var other) || other != null)
+                if (!_board.TryGetStone(position, out var other) || other != null)
                     return false;
 
                 var oldPosition = cell.BoardPosition;
@@ -395,8 +396,8 @@ namespace Kott.MagicDefence.Game
 
                 sequence.Insert(time, cell.transform.DOMove(BoardToWorldPosition(position), 0.2f).SetEase(Ease.OutQuad));
 
-                _cells[oldPosition] = null;
-                _cells[position] = cell;
+                _board.TrySetStone(oldPosition, null);
+                _board.TrySetStone(position, cell);
 
                 return true;
             }
@@ -407,17 +408,11 @@ namespace Kott.MagicDefence.Game
             if (hasChanged)
                 return;
 
-            foreach (var boardPosition in _cellPositions)
-            {
-                if (!_cells.ContainsKey(boardPosition) || !_cellsTmp.ContainsKey(boardPosition))
-                    continue;
-
-                _cellsTmp[boardPosition] = _cells[boardPosition];
-            }
+            var cellsToDestroy = new HashSet<HexVector>();
 
             foreach (var boardPosition in _cellPositions)
             {
-                if (!_cellsTmp.TryGetValue(boardPosition, out var current) || current == null)
+                if (!_board.TryGetStone(boardPosition, out var current) || current == null)
                     continue;
 
                 if (!current.CanCombine)
@@ -442,24 +437,28 @@ namespace Kott.MagicDefence.Game
                 }
             }
 
-            // sequence.Append(subSequence);
+            foreach (var position in cellsToDestroy)
+            {
+                TryDestroyCell(position, sequence);
+            }
 
             bool CheckDirection(BoardCell current, HexVector position, HexVector direction)
             {
                 var otherPositionA = position + direction;
-                if (!_cellsTmp.TryGetValue(otherPositionA, out var otherA) || otherA == null)
+                if (!_board.TryGetStone(otherPositionA, out var otherA) || otherA == null)
                     return false;
 
                 var otherPositionB = position - direction;
-                if (!_cellsTmp.TryGetValue(otherPositionB, out var otherB) || otherB == null)
+                if (!_board.TryGetStone(otherPositionB, out var otherB) || otherB == null)
                     return false;
 
                 if (current.CellColor != otherA.CellColor || current.CellColor != otherB.CellColor)
                     return false;
 
-                TryDestroyCell(position, sequence);
-                TryDestroyCell(otherPositionA, sequence);
-                TryDestroyCell(otherPositionB, sequence);
+                cellsToDestroy.Add(position);
+                cellsToDestroy.Add(otherPositionA);
+                cellsToDestroy.Add(otherPositionB);
+
                 return true;
             }
         }

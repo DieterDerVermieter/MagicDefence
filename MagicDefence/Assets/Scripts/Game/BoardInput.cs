@@ -11,12 +11,12 @@ namespace Kott.MagicDefence.Game
 
         private HexVector _pressStartBoardPosition;
 
-        private Board _board;
+        private BoardController _board;
 
 
         private void Awake()
         {
-            _board = GetComponent<Board>();
+            _board = GetComponent<BoardController>();
         }
 
 
